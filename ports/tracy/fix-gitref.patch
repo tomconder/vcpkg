@@ -1,0 +1,44 @@
+diff --git a/profiler/CMakeLists.txt b/profiler/CMakeLists.txt
+index c89fbc9..6048f2d 100644
+--- a/profiler/CMakeLists.txt
++++ b/profiler/CMakeLists.txt
+@@ -269,24 +269,17 @@ endif()
+ 
+ find_package(Git)
+ if(Git_FOUND)
+-    add_custom_target(git-ref
+-        COMMAND ${CMAKE_COMMAND} -E echo "#pragma once" > GitRef.hpp.tmp
+-        COMMAND ${GIT_EXECUTABLE} -C ${CMAKE_CURRENT_SOURCE_DIR} log -1 "--format=namespace tracy { static inline const char* GitRef = %x22%h%x22; }" ${GIT_REV} >> GitRef.hpp.tmp || echo "namespace tracy { static inline const char* GitRef = \"unknown\"; }" >> GitRef.hpp.tmp
+-        COMMAND ${CMAKE_COMMAND} -E copy_if_different GitRef.hpp.tmp GitRef.hpp
+-        BYPRODUCTS GitRef.hpp GitRef.hpp.tmp
+-        VERBATIM
++    execute_process(
++	COMMAND git log -1 --format=%h ${GIT_REV} 
++	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
++        OUTPUT_VARIABLE REV
++        OUTPUT_STRIP_TRAILING_WHITESPACE
+     )
+-    add_dependencies(${PROJECT_NAME} git-ref)
+ else()
+     message(WARNING "git not found, using 'unknown' as git ref.")
+-    add_custom_command(
+-        OUTPUT GitRef.hpp
+-        COMMAND ${CMAKE_COMMAND} -E echo "#pragma once" > GitRef.hpp
+-        COMMAND ${CMAKE_COMMAND} -E echo "namespace tracy { static inline const char* GitRef = \"unknown\"; }" >> GitRef.hpp
+-        VERBATIM
+-    )
+-    target_sources(${PROJECT_NAME} PUBLIC GitRef.hpp)
++    set(REV "unknown")
+ endif()
++configure_file(GitRef.hpp.in GitRef.hpp)
+ 
+ if(NOT EMSCRIPTEN)
+     if(NOT NO_FILESELECTOR)
+diff --git a/profiler/GitRef.hpp.in b/profiler/GitRef.hpp.in
+new file mode 100644
+index 0000000..273969d
+--- /dev/null
++++ b/profiler/GitRef.hpp.in
+@@ -0,0 +1,2 @@
++#pragma once
++namespace tracy { static inline const char* GitRef = "@REV@"; }
