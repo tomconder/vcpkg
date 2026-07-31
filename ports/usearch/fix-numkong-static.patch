@@ -1,0 +1,58 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index b4b1f2f..09ac2cd 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -128,7 +128,18 @@ endif ()
+ target_compile_definitions(${USEARCH_TARGET_NAME} INTERFACE "USEARCH_USE_OPENMP=$<BOOL:${USEARCH_USE_OPENMP}>")
+ 
+ # Supplementary compilation settings affecting "index_plugins.hpp"
+-target_compile_definitions(${USEARCH_TARGET_NAME} INTERFACE "USEARCH_USE_NUMKONG=$<BOOL:${USEARCH_USE_NUMKONG}>")
++set(USEARCH_USE_NUMKONG_SHARED OFF)
++if (USEARCH_USE_NUMKONG)
++    # `configure_with_numkong()` in index_plugins.hpp calls `nk_find_kernel_punned`, which is only declared
++    # when NK_DYNAMIC_DISPATCH=1, and only implemented in the shared `nk_shared` runtime-dispatch library.
++    find_package(unofficial-numkong CONFIG QUIET)
++    if (TARGET unofficial::numkong::nk_shared)
++        set(USEARCH_USE_NUMKONG_SHARED ON)
++        target_link_libraries(${USEARCH_TARGET_NAME} INTERFACE unofficial::numkong::nk_shared)
++        target_compile_definitions(${USEARCH_TARGET_NAME} INTERFACE "NK_DYNAMIC_DISPATCH=1")
++    endif ()
++endif ()
++target_compile_definitions(${USEARCH_TARGET_NAME} INTERFACE "USEARCH_USE_NUMKONG=$<BOOL:${USEARCH_USE_NUMKONG_SHARED}>")
+ 
+ # Define which types can be compiled
+ target_compile_definitions(
+@@ -148,19 +159,12 @@ target_include_directories(
+     ${USEARCH_TARGET_NAME} ${USEARCH_SYSTEM_INCLUDE} INTERFACE $<BUILD_INTERFACE:${USEARCH_INCLUDE_BUILD_DIR}>
+                                                                $<INSTALL_INTERFACE:include>
+ )
+-if (USEARCH_USE_NUMKONG)
++if (USEARCH_USE_NUMKONG_SHARED)
+     find_path(NUMKONG_INCLUDE_DIRS "numkong/attention.h")
+     target_include_directories(
+         ${USEARCH_TARGET_NAME} ${USEARCH_SYSTEM_INCLUDE}
+         INTERFACE $<BUILD_INTERFACE:${NUMKONG_INCLUDE_DIRS}> $<INSTALL_INTERFACE:include>
+     )
+-    # `configure_with_numkong()` in index_plugins.hpp calls `nk_find_kernel_punned`, which is only declared
+-    # when NK_DYNAMIC_DISPATCH=1, and only implemented in the shared `nk_shared` runtime-dispatch library.
+-    find_package(unofficial-numkong CONFIG QUIET)
+-    if (TARGET unofficial::numkong::nk_shared)
+-        target_link_libraries(${USEARCH_TARGET_NAME} INTERFACE unofficial::numkong::nk_shared)
+-        target_compile_definitions(${USEARCH_TARGET_NAME} INTERFACE "NK_DYNAMIC_DISPATCH=1")
+-    endif ()
+ endif ()
+ # Install a pkg-config file, so other tools can find this
+ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/cmake/pkg-config.pc.in" "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.pc")
+diff --git a/cmake/config.cmake.in b/cmake/config.cmake.in
+index 0b3ef93..8198810 100644
+--- a/cmake/config.cmake.in
++++ b/cmake/config.cmake.in
+@@ -3,7 +3,7 @@ set(${CMAKE_FIND_PACKAGE_NAME}_CONFIG ${CMAKE_CURRENT_LIST_FILE})
+ find_package_handle_standard_args(@PROJECT_NAME@ CONFIG_MODE)
+ 
+ if(NOT TARGET @PROJECT_NAME@::@USEARCH_TARGET_NAME@)
+-    if(@USEARCH_USE_NUMKONG@)
++    if(@USEARCH_USE_NUMKONG_SHARED@)
+         include(CMakeFindDependencyMacro)
+         find_dependency(unofficial-numkong CONFIG)
+     endif()

@@ -8,11 +8,11 @@ vcpkg_from_github(
         use-vcpkg-ports.patch
         fix-map-failed.patch # official fix: https://github.com/unum-cloud/USearch/pull/720 , remove this patch in the next release
         fix-numkong-dynamic-dispatch.patch
+        fix-numkong-static.patch
 )
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
     FEATURES
-        fp16     USEARCH_USE_FP16LIB
         jemalloc USEARCH_USE_JEMALLOC
         numkong  USEARCH_USE_NUMKONG
 )
@@ -24,8 +24,6 @@ vcpkg_cmake_configure(
         -DUSEARCH_INSTALL=ON
         -DUSEARCH_BUILD_TEST_CPP=OFF
         -DUSEARCH_BUILD_BENCH_CPP=OFF
-    MAYBE_UNUSED_VARIABLES
-        USEARCH_USE_FP16LIB
 )
 
 vcpkg_cmake_install()
